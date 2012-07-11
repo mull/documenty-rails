@@ -7,7 +7,11 @@ Gem::Specification.new do |s|
   s.description   = "Produce Documenty API documentation from your Rails controllers"
   s.authors       = ["Emil Ahlbäck"]
   s.email         = 'e.ahlback@gmail.com'
+                    # Stolen from rspec-rails, thank you!
   s.files         = `git ls-files -- lib/*`.split("\n")
   s.require_paths = ["lib/documenty-rails", "lib/"]
   s.homepage      = 'https://github.com/pushly/documenty-rails'
+
+  s.add_runtime_dependency("documenty")
+  s.add_runtime_dependency("yard")
 end

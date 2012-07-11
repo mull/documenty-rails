@@ -1,23 +1,32 @@
-module DocumentyRails
+module Documenty
   module Generators
     class InstallGenerator < ::Rails::Generators::Base
 
-      desc <<DESC
+      desc <<-DESC
 Description:
-    Copy rspec files to your application.
+    Create the config/documenty.yml configuration file by giving
+    documenty-rails some basic information about your API.
 DESC
 
       def self.source_root
         @source_root ||= File.expand_path(File.join(File.dirname(__FILE__), 'templates'))
       end
 
-      def say_hi
+      def generate_config
         puts "I need some basic information to create your API documentation."
         print "API name: "; name = STDIN.readline.strip
         print "API version: "; version = STDIN.readline.strip
         print "API url: "; url = STDIN.readline.strip
+        print "API controller namespace (eg. api/v1): "
+        # TODO: handle trailing /
+        namespace = STDIN.readline.strip
+
 
         config = {
+          "config" => {
+            "controller_namespace" => namespace
+          },
+
           "base" => {
             "name" => name,
             "version" => version,

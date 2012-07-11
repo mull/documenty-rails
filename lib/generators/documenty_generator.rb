@@ -8,49 +8,77 @@ require 'documenty-rails/yard_tags'
 module Documenty
   module Generators
     class DocumentyGenerator < ::Rails::Generators::Base
-
       desc <<-DESC
 Description:
-    Copy rspec files to your application.
+    Generate an API documentation from your API controllers.
 DESC
+      source_root( File.expand_path("../../../static/", __FILE__))
 
       def create_api_docs_from_controllers
-        puts "LOWL"
         DocumentyRails::TAGS.each do |tag|
           YARD::Tags::Library.define_tag(tag[0], tag[1])
         end
 
-        files = Dir.glob( File.join(Rails.root, 'app/controllers/api/**/*controller.rb') )
-
-        files.each do |file|
-          YARD.parse(file)
-        end
 
         config_file = File.join(Rails.root, 'config/documenty.yml')
         output_directory = File.join(Rails.root, 'public/api')
 
-        base = {}
         if File.exists? config_file
-          base = YAML.load( File.open(config_file) )["base"]
+          config = YAML.load( File.open(config_file) )
+          validate_required_configuration(config)
         else
-          puts <<-RUN_INSTALLER
-            Please run the documenty-rails installer by issuing the command "rails g documenty:install"
-          RUN_INSTALLER
+          puts 'Please run the documenty-rails installer by issuing the command "rails g documenty:install"'
           exit
         end
 
-        resources = {}
-        YARD::Registry.all(:class).each do |klass|
-          resource = DocumentyRails::ControllerParser.parse(klass)
-          resources[resource[0]] = resource[1] unless resource.nil?
-        end
-
         api = {
-          "base" => base,
-          "resources" => resources
+          "base" => config["base"]
         }
 
-        yml_file = File.join(output_directory, 'api.yml')
+        namespace = config["config"]["controller_namespace"]
+        namespace_regex = Regexp.new(namespace)
+
+        resources = {}
+
+        # Scan through routes and look for our namespace
+        Rails.application.routes.routes.each do |route|
+          if namespace_regex =~ route.path.spec.to_s
+            controller = route.defaults[:controller]
+            method = route.defaults[:action]
+            controller_file = "#{route.defaults[:controller]}_controller.rb"
+            controller_path = File.join(Rails.root, 'app/controllers', controller_file)
+
+            # Safety check :-P
+            next unless File.exists? controller_path
+            
+            resource_name = controller.split('/').last.singularize
+            resources[resource_name] ||= {}
+            resources[resource_name]["actions"] ||= {}
+
+            action = {
+              "path" => route.path.spec.to_s,
+              "method" => /[^\^\$\/]+/.match(route.verb.inspect)[0]
+            }
+
+            resources[resource_name]["actions"][method] = action
+            YARD.parse(controller_path)
+          end
+        end
+      
+
+        YARD::Registry.all(:class).reverse.each do |klass|
+          docs = DocumentyRails::ControllerParser.parse(klass)
+          unless docs.nil?
+            name = klass.name.to_s.split('Controller')[0].singularize.downcase
+            resources[name].deep_merge!(docs)
+          end
+          #resources[resource[0]] = resource[1] unless resource.nil?
+        end        
+
+        puts "Done parsing #{YARD::Registry.all(:class).count} classes..."
+        api["resources"] = resources        
+
+        yml_file = File.join('api.yml')
 
         # Create the directories necessary to create our output
         # TODO: Handle exceptions
@@ -61,17 +89,37 @@ DESC
           YAML.dump(api, out)
         end
 
-
         # Use YamlAPIParser to guarantee that we made a correct YAML file
         yap = Documenty::YamlAPIParser.new(yml_file)
 
-        # Use HTMLParser in much the same way that Documenty does
-        html_file = File.join( output_directory, 'index.html' )
         if yap.valid?
-          Documenty::HTMLProducer.produce(yap.attributes, html_file)
+          Documenty::HTMLProducer.produce(yap.attributes, output_directory)
+          copy_file "style.css", File.join(output_directory, 'style.css')
         else
           puts "I could not produce HTML :-/"
         end
+      end
+
+      private
+      def validate_required_configuration(config)
+        required_base = ["name", "version", "url"]
+
+        if config["base"].nil? || config["base"].empty?
+          puts "Config file does not contain base properties, exiting..."
+          exit
+        end
+
+        required_base.each do |base_attr|
+          if config["base"][base_attr].nil? || config["base"][base_attr].blank?
+            puts "Config file does not contain the required attribute '#{base_attr}', exiting..."
+            exit
+          end
+        end
+
+        #if config["config"].nil? || config["config"].empty? || !File.directory?(config["config"]["controller_dir"])
+        #  puts "Controller directory is not a directory, exiting..."
+        #  exit
+        #end
       end
     end
   end
