@@ -18,7 +18,6 @@ DESC
         print "API version: "; version = STDIN.readline.strip
         print "API url: "; url = STDIN.readline.strip
         print "API controller namespace (eg. api/v1): "
-        # TODO: handle trailing /
         namespace = STDIN.readline.strip
 
 

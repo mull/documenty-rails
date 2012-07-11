@@ -116,10 +116,14 @@ DESC
           end
         end
 
-        #if config["config"].nil? || config["config"].empty? || !File.directory?(config["config"]["controller_dir"])
-        #  puts "Controller directory is not a directory, exiting..."
-        #  exit
-        #end
+        if !config["config"].nil? && !config["config"].empty? 
+          if || config["config"]["controller_namespace"].nil?
+            puts "There is no controller namespace set, exiting..."
+            exit
+          end
+          puts "There is no configuration set, exiting..."
+          exit
+        end
       end
     end
   end
