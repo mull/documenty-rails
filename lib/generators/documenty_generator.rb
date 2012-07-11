@@ -78,7 +78,7 @@ DESC
         puts "Done parsing #{YARD::Registry.all(:class).count} classes..."
         api["resources"] = resources        
 
-        yml_file = File.join('api.yml')
+        yml_file = File.join(output_directory, 'api.yml')
 
         # Create the directories necessary to create our output
         # TODO: Handle exceptions
@@ -117,10 +117,11 @@ DESC
         end
 
         if !config["config"].nil? && !config["config"].empty? 
-          if || config["config"]["controller_namespace"].nil?
+          if config["config"]["controller_namespace"].nil?
             puts "There is no controller namespace set, exiting..."
             exit
           end
+        else
           puts "There is no configuration set, exiting..."
           exit
         end
